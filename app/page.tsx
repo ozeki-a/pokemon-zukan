@@ -14,7 +14,26 @@ export default function Home() {
   const [allPokemonList, setAllPokemonList] = useState<Pokemon[]>([]);
   const [offset, setOffset] = useState(0);
   const [selectedType, setSelectedType] = useState<string | null>(null);
+  const [favorites, setFavorites] = useState<number[]>([]);
   const limit = 20;
+
+  // ローカルストレージからお気に入りを読み込む
+  useEffect(() => {
+    const savedFavorites = JSON.parse(localStorage.getItem("favorites") || "[]");
+    setFavorites(savedFavorites);
+  }, []);
+
+  // お気に入りの追加/削除
+  const toggleFavorite = (id: number) => {
+    let updatedFavorites;
+    if (favorites.includes(id)) {
+      updatedFavorites = favorites.filter(favId => favId !== id);
+    } else {
+      updatedFavorites = [...favorites, id];
+    }
+    setFavorites(updatedFavorites);
+    localStorage.setItem("favorites", JSON.stringify(updatedFavorites));
+  };
 
   // API からポケモンのリストを取得
   useEffect(() => {
@@ -76,26 +95,32 @@ export default function Home() {
         )}
       </div>
 
+      {/* ポケモンリスト */}
+      <ul className="grid grid-cols-2 md:grid-cols-4 gap-4 max-w-2xl mx-auto">
+        {allPokemonList.map((pokemon, index) => {
+          const pokemonId = pokemon.url.split("/").slice(-2, -1)[0];
+          const imageUrl = `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/${pokemonId}.png`;
 
-        {/* ポケモンリスト */}
-        <ul className="grid grid-cols-2 md:grid-cols-4 gap-4 max-w-2xl mx-auto">
-          {allPokemonList.map((pokemon, index) => {
-            // ポケモンのIDを取得（URLの末尾の数字を取得）
-            const pokemonId = pokemon.url.split("/").slice(-2, -1)[0];
+          return (
+            <li key={index} className="bg-white p-4 rounded-lg shadow-md text-center relative hover:bg-gray-200 transition">
+              {/* お気に入りボタン */}
+              <button 
+                onClick={() => toggleFavorite(Number(pokemonId))}
+                className={`absolute top-2 right-2 text-xl ${
+                  favorites.includes(Number(pokemonId)) ? "text-yellow-500" : "text-gray-400"
+                }`}
+              >
+                {favorites.includes(Number(pokemonId)) ? "★" : "☆"}
+              </button>
 
-            const imageUrl = `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/${pokemonId}.png`;
-
-            return (
-              <li key={index} className="bg-white p-4 rounded-lg shadow-md text-center hover:bg-gray-200 transition">
-                <Link href={`/pokemon/${pokemonId}`} className="block">
-                  <Image src={imageUrl} alt={pokemon.name} width={96} height={96} className="mx-auto" />
-                  <p className="capitalize font-semibold mt-2">{pokemon.name}</p>
-                </Link>
-              </li>
-            );
-          })}
-        </ul>
-
+              <Link href={`/pokemon/${pokemonId}`} className="block">
+                <Image src={imageUrl} alt={pokemon.name} width={96} height={96} className="mx-auto" />
+                <p className="capitalize font-semibold mt-2">{pokemon.name}</p>
+              </Link>
+            </li>
+          );
+        })}
+      </ul>
 
       {/* 「もっと見る」ボタン（無限スクロール風） */}
       <div className="flex justify-center mt-6">
