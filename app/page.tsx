@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import Image from "next/image";
+import Link from "next/link";
 
 type Pokemon = {
   name: string;
@@ -75,20 +76,26 @@ export default function Home() {
         )}
       </div>
 
-      {/* ポケモンリスト */}
-      <ul className="grid grid-cols-2 md:grid-cols-4 gap-4 max-w-2xl mx-auto">
-        {allPokemonList.map((pokemon, index) => {
-          const pokemonId = pokemon.url.split("/").slice(-2, -1)[0];
-          const imageUrl = `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/${pokemonId}.png`;
 
-          return (
-            <li key={index} className="bg-white p-4 rounded-lg shadow-md text-center">
-              <Image src={imageUrl} alt={pokemon.name} width={96} height={96} className="mx-auto" />
-              <p className="capitalize font-semibold mt-2">{pokemon.name}</p>
-            </li>
-          );
-        })}
-      </ul>
+        {/* ポケモンリスト */}
+        <ul className="grid grid-cols-2 md:grid-cols-4 gap-4 max-w-2xl mx-auto">
+          {allPokemonList.map((pokemon, index) => {
+            // ポケモンのIDを取得（URLの末尾の数字を取得）
+            const pokemonId = pokemon.url.split("/").slice(-2, -1)[0];
+
+            const imageUrl = `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/${pokemonId}.png`;
+
+            return (
+              <li key={index} className="bg-white p-4 rounded-lg shadow-md text-center hover:bg-gray-200 transition">
+                <Link href={`/pokemon/${pokemonId}`} className="block">
+                  <Image src={imageUrl} alt={pokemon.name} width={96} height={96} className="mx-auto" />
+                  <p className="capitalize font-semibold mt-2">{pokemon.name}</p>
+                </Link>
+              </li>
+            );
+          })}
+        </ul>
+
 
       {/* 「もっと見る」ボタン（無限スクロール風） */}
       <div className="flex justify-center mt-6">
