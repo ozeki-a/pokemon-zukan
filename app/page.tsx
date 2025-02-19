@@ -15,6 +15,7 @@ export default function Home() {
   const [offset, setOffset] = useState(0);
   const [selectedType, setSelectedType] = useState<string | null>(null);
   const [favorites, setFavorites] = useState<number[]>([]);
+  const [showFavoritesOnly, setShowFavoritesOnly] = useState(false);
   const limit = 20;
 
   // ローカルストレージからお気に入りを読み込む
@@ -62,6 +63,11 @@ export default function Home() {
     fetchPokemon();
   }, [offset, selectedType]);
 
+  // フィルタリングされたポケモンリスト
+  const displayedPokemonList = showFavoritesOnly
+    ? allPokemonList.filter(pokemon => favorites.includes(Number(pokemon.url.split("/").slice(-2, -1)[0])))
+    : allPokemonList;
+
   return (
     <div className="min-h-screen bg-gray-100 p-4">
       <h1 className="text-3xl font-bold text-center mb-6">Pokémon図鑑</h1>
@@ -95,9 +101,19 @@ export default function Home() {
         )}
       </div>
 
+      {/* お気に入りフィルター */}
+      <div className="flex justify-center mb-4">
+        <button
+          onClick={() => setShowFavoritesOnly(prev => !prev)}
+          className={`px-4 py-2 rounded-lg ${showFavoritesOnly ? "bg-yellow-500 text-white" : "bg-gray-200 hover:bg-gray-300"}`}
+        >
+          {showFavoritesOnly ? "すべてのポケモンを表示" : "お気に入りのみ表示"}
+        </button>
+      </div>
+
       {/* ポケモンリスト */}
       <ul className="grid grid-cols-2 md:grid-cols-4 gap-4 max-w-2xl mx-auto">
-        {allPokemonList.map((pokemon, index) => {
+        {displayedPokemonList.map((pokemon, index) => {
           const pokemonId = pokemon.url.split("/").slice(-2, -1)[0];
           const imageUrl = `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/${pokemonId}.png`;
 
@@ -123,14 +139,16 @@ export default function Home() {
       </ul>
 
       {/* 「もっと見る」ボタン（無限スクロール風） */}
-      <div className="flex justify-center mt-6">
-        <button 
-          onClick={() => setOffset(prev => prev + limit)} 
-          className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600"
-        >
-          もっと見る
-        </button>
-      </div>
+      {!showFavoritesOnly && (
+        <div className="flex justify-center mt-6">
+          <button 
+            onClick={() => setOffset(prev => prev + limit)} 
+            className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600"
+          >
+            もっと見る
+          </button>
+        </div>
+      )}
     </div>
   );
 }
