@@ -8,7 +8,9 @@ type Pokemon = {
   url: string;
 };
 
-const types = ["fire", "water", "grass", "electric", "ice", "fighting", "poison", "ground", "psychic", "rock", "ghost", "dragon", "dark", "steel", "fairy"];
+const types = [
+  "normal", "fire", "water", "grass", "electric", "ice", "fighting", "poison", "ground", "psychic", "rock", "ghost", "dragon", "dark", "steel", "fairy"];
+
 
 export default function Home() {
   const [allPokemonList, setAllPokemonList] = useState<Pokemon[]>([]);

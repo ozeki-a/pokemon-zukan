@@ -12,33 +12,46 @@ type EvolutionChain = {
   image_url: string;
 };
 
-async function fetchEvolutionChain(pokemonName: string): Promise<EvolutionChain[]> {
-  // ① ポケモンのspecies情報を取得
+export async function generateMetadata({ params }: { params: { id: string } }) {
+  const res = await fetch(`https://pokeapi.co/api/v2/pokemon/${params.id}`);
+  if (!res.ok) return { title: "ポケモン図鑑" };
+
+  const pokemon = await res.json();
+  return {
+    title: `ポケモン図鑑 | ${pokemon.name}`,
+  };
+}
+
+// 進化チェーンを取得する関数
+async function fetchEvolutionChain(pokemonName: string): Promise<EvolutionChain[][]> {
   const speciesRes = await fetch(`https://pokeapi.co/api/v2/pokemon-species/${pokemonName}`);
   if (!speciesRes.ok) return [];
 
   const speciesData = await speciesRes.json();
   const evolutionChainUrl = speciesData.evolution_chain.url;
 
-  // ② 進化チェーンのデータを取得
   const evolutionRes = await fetch(evolutionChainUrl);
   if (!evolutionRes.ok) return [];
 
   const evolutionData = await evolutionRes.json();
-  let evolutionList: EvolutionChain[] = [];
+  let evolutionList: EvolutionChain[][] = [];
 
-  // ③ 進化の流れを解析
-  let evolutionStage = evolutionData.chain;
-  while (evolutionStage) {
-    const speciesName = evolutionStage.species.name;
-    const id = evolutionStage.species.url.split("/").slice(-2, -1)[0];
-    evolutionList.push({
-      species_name: speciesName,
-      image_url: `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/${id}.png`
+  // 進化段階を再帰的に取得する関数
+  function extractEvolutions(stage: any, depth = 0) {
+    if (!evolutionList[depth]) evolutionList[depth] = [];
+
+    evolutionList[depth].push({
+      species_name: stage.species.name,
+      image_url: `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/${stage.species.url.split("/").slice(-2, -1)[0]}.png`
     });
-    evolutionStage = evolutionStage.evolves_to[0]; // 次の進化段階へ
+
+    // 複数の進化先を取得
+    for (const nextStage of stage.evolves_to) {
+      extractEvolutions(nextStage, depth + 1);
+    }
   }
 
+  extractEvolutions(evolutionData.chain);
   return evolutionList;
 }
 
@@ -67,15 +80,16 @@ export default async function PokemonDetail({ params }: { params: { id: string }
       {evolutionChain.length > 1 && (
         <div className="mt-6 bg-white p-4 rounded-lg shadow-md">
           <h2 className="text-2xl font-bold mb-2">進化チェーン</h2>
-          <div className="flex items-center justify-center gap-4">
-            {evolutionChain.map((evo, index) => (
-              <div key={index} className="text-center">
-                <Image src={evo.image_url} alt={evo.species_name} width={100} height={100} />
-                <p className="capitalize mt-2">{evo.species_name}</p>
-                {index < evolutionChain.length - 1 && <p>➡</p>}
-              </div>
-            ))}
-          </div>
+          {evolutionChain.map((stage, stageIndex) => (
+            <div key={stageIndex} className="flex items-center justify-center gap-4 mb-4">
+              {stage.map((evo, index) => (
+                <div key={index} className="text-center">
+                  <Image src={evo.image_url} alt={evo.species_name} width={100} height={100} />
+                  <p className="capitalize mt-2">{evo.species_name}</p>
+                </div>
+              ))}
+            </div>
+          ))}
         </div>
       )}
 
