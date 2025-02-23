@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import Image from "next/image";
 import Link from "next/link";
 
@@ -9,8 +9,9 @@ type Pokemon = {
 };
 
 const types = [
-  "normal", "fire", "water", "grass", "electric", "ice", "fighting", "poison", "ground", "psychic", "rock", "ghost", "dragon", "dark", "steel", "fairy"];
-
+  "normal", "fire", "water", "grass", "electric", "ice", "fighting", "poison",
+  "ground", "psychic", "rock", "ghost", "dragon", "dark", "steel", "fairy"
+];
 
 export default function Home() {
   const [allPokemonList, setAllPokemonList] = useState<Pokemon[]>([]);
@@ -19,6 +20,8 @@ export default function Home() {
   const [favorites, setFavorites] = useState<number[]>([]);
   const [showFavoritesOnly, setShowFavoritesOnly] = useState(false);
   const limit = 20;
+  const [loading, setLoading] = useState(true);
+  const [favoritePokemonList, setFavoritePokemonList] = useState<Pokemon[]>([]);
 
   // ローカルストレージからお気に入りを読み込む
   useEffect(() => {
@@ -41,6 +44,7 @@ export default function Home() {
   // API からポケモンのリストを取得
   useEffect(() => {
     async function fetchPokemon() {
+      setLoading(true); // データ取得前にローディングをON
       try {
         let url = `https://pokeapi.co/api/v2/pokemon?limit=${limit}&offset=${offset}`;
 
@@ -60,15 +64,43 @@ export default function Home() {
       } catch (error) {
         console.error("ポケモンデータの取得に失敗しました", error);
       }
+      setLoading(false); // データ取得が終わったらローディングをOFF
     }
 
     fetchPokemon();
   }, [offset, selectedType]);
 
-  // フィルタリングされたポケモンリスト
-  const displayedPokemonList = showFavoritesOnly
-    ? allPokemonList.filter(pokemon => favorites.includes(Number(pokemon.url.split("/").slice(-2, -1)[0])))
-    : allPokemonList;
+  // お気に入りポケモンの詳細データを取得
+  useEffect(() => {
+    async function fetchFavoritePokemon() {
+      if (!showFavoritesOnly || favorites.length === 0) return;
+  
+      try {
+        const favoriteData = await Promise.all(
+          favorites.map(async (favId) => {
+            const res = await fetch(`https://pokeapi.co/api/v2/pokemon/${favId}`);
+  
+            // ❗ APIリクエストが失敗した場合は null を返す
+            if (!res.ok) return null;
+  
+            return await res.json();
+          })
+        );
+  
+        // ❗ null のデータを除外してセット
+        setFavoritePokemonList(favoriteData.filter(pokemon => pokemon !== null));
+      } catch (error) {
+        console.error("お気に入りポケモンの取得に失敗しました", error);
+      }
+    }
+  
+    fetchFavoritePokemon();
+  }, [showFavoritesOnly, favorites]); // お気に入りが変更されたら更新
+
+  // useMemo で最適化
+  const displayedPokemonList = useMemo(() => {
+    return showFavoritesOnly ? favoritePokemonList : allPokemonList;
+  }, [allPokemonList, favoritePokemonList, showFavoritesOnly]);
 
   return (
     <div className="min-h-screen bg-gray-100 p-4">
@@ -113,10 +145,14 @@ export default function Home() {
         </button>
       </div>
 
-      {/* ポケモンリスト */}
-      <ul className="grid grid-cols-2 md:grid-cols-4 gap-4 max-w-2xl mx-auto">
-        {displayedPokemonList.map((pokemon, index) => {
-          const pokemonId = pokemon.url.split("/").slice(-2, -1)[0];
+      {/* ローディング表示 */}
+      {loading ? (
+        <p className="text-center text-gray-500">ポケモンを読み込み中...</p>
+      ) : (
+        <ul className="grid grid-cols-2 md:grid-cols-4 gap-4 max-w-2xl mx-auto">
+          {displayedPokemonList.map((pokemon, index) => {
+          // pokemon.url がある場合は URL からIDを取得、ない場合は直接 pokemon.id を使用
+          const pokemonId = pokemon.url ? pokemon.url.split("/").slice(-2, -1)[0] : pokemon.id;
           const imageUrl = `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/${pokemonId}.png`;
 
           return (
@@ -138,10 +174,11 @@ export default function Home() {
             </li>
           );
         })}
-      </ul>
+        </ul>
+      )}
 
-      {/* 「もっと見る」ボタン（無限スクロール風） */}
-      {!showFavoritesOnly && (
+      {/* 「もっと見る」ボタン */}
+      {!showFavoritesOnly && !loading && (
         <div className="flex justify-center mt-6">
           <button 
             onClick={() => setOffset(prev => prev + limit)} 
